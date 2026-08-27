@@ -1,0 +1,11 @@
+apiVersion: v2
+name: collabx
+description: Helm chart for CollabX Multi-Agent Editorial & Newsletter Team Framework
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - multi-agent-team
+  - newsletter-agents
+  - editorial-workflow
+  - automated-publishing

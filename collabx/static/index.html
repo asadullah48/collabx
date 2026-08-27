@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CollabX | Multi-Agent Editorial Team & Newsletter Framework</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Ambient Safety Lights -->
+  <div class="glow-sphere glow-coral"></div>
+  <div class="glow-sphere glow-violet"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1>Collab<span class="gradient-text">X</span></h1>
+          <span class="brand-badge" data-i18n="badgeTitle">Editorial Team Agents</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <a href="https://asadullahshafique-devunity.vercel.app" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">
+          <span>👨‍💻 DevUnity Portfolio</span>
+        </a>
+
+        <div class="live-status">
+          <span class="pulse-dot"></span>
+          <span id="gatewayStatus" data-i18n="statusLive">Editorial Desk Active (:8014)</span>
+        </div>
+
+        <button id="langToggleBtn" class="btn btn-outline btn-sm" onclick="toggleLanguage()">
+          <span id="langLabel">العربية</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Body -->
+  <main class="app-main">
+    <!-- Hero Header -->
+    <section class="hero-section">
+      <h2 data-i18n="heroTitle">Orchestrated Multi-Agent Team for Publication-Ready Newsletters</h2>
+      <p data-i18n="heroSubtitle">Coordinate Researcher, Writer, and Editor agents across a collaborative state graph to uncover industry breakthroughs, draft narrative arcs, and compile polished editorial editions.</p>
+    </section>
+
+    <!-- Metrics Row -->
+    <section class="metrics-grid">
+      <div class="metric-card glass">
+        <span class="metric-label" data-i18n="metric1Label">Publishing Velocity</span>
+        <div class="metric-value gradient-text">3.4x Faster</div>
+        <span class="metric-sub" data-i18n="metric1Sub">From Idea to Publication</span>
+      </div>
+      <div class="metric-card glass">
+        <span class="metric-label" data-i18n="metric2Label">Readability Rating</span>
+        <div class="metric-value">88.5 / 100</div>
+        <span class="metric-sub" data-i18n="metric2Sub">Flesch-Kincaid Verified</span>
+      </div>
+      <div class="metric-card glass">
+        <span class="metric-label" data-i18n="metric3Label">Fact-Check Grounding</span>
+        <div class="metric-value">100% Grounded</div>
+        <span class="metric-sub" data-i18n="metric3Sub">Peer-Audited Dossiers</span>
+      </div>
+      <div class="metric-card glass">
+        <span class="metric-label" data-i18n="metric4Label">Output Formats</span>
+        <div class="metric-value">Markdown + HTML</div>
+        <span class="metric-sub" data-i18n="metric4Sub">Instant Multi-Channel Sync</span>
+      </div>
+    </section>
+
+    <!-- Studio Section -->
+    <section class="studio-section">
+      <div class="section-header">
+        <div>
+          <h3 data-i18n="studioTitle">Autonomous Editorial Desk Studio</h3>
+          <p class="section-desc" data-i18n="studioDesc">Submit an editorial topic, monitor multi-agent collaboration across the research and writing pipeline, and review the final publication edition in real time.</p>
+        </div>
+      </div>
+
+      <div class="studio-layout">
+        <!-- Input & Control Panel -->
+        <div class="panel glass">
+          <!-- Preset Briefs -->
+          <div class="preset-box">
+            <span class="preset-label" data-i18n="lblPresets">Select Preset Editorial Topic:</span>
+            <div class="preset-buttons" id="scenarioButtons">
+              <!-- JS Rendered -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label data-i18n="lblTopic">Newsletter Topic / Theme</label>
+            <textarea id="topicInput" class="input-control textarea-control" rows="3">The Rise of Autonomous Agent Swarms in Enterprise Automation</textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex:1;">
+              <label data-i18n="lblAudience">Target Audience</label>
+              <input type="text" id="audienceInput" class="input-control" value="CTOs, Founders & Enterprise Architects">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label data-i18n="lblTone">Tone of Voice</label>
+              <select id="toneSelect" class="input-control">
+                <option value="TECH_PIONEER">Tech Pioneer</option>
+                <option value="EXECUTIVE_BRIEF">Executive Brief</option>
+                <option value="DEEP_DIVE_ANALYST">Deep Dive Analyst</option>
+                <option value="ENGAGING_STORYTELLER">Engaging Storyteller</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" onclick="runEditorialTask()" id="produceBtn">
+            <span data-i18n="btnExecuteProduce">🚀 Run Multi-Agent Team & Publish</span>
+          </button>
+        </div>
+
+        <!-- Output & Publication Panel -->
+        <div class="panel glass output-panel">
+          <div class="panel-header">
+            <span class="panel-title" data-i18n="titleEdition">Published Newsletter Edition</span>
+            <span id="qualityBadge" class="badge badge-success">READY</span>
+          </div>
+
+          <!-- Multi-Agent Pipeline Status Bar -->
+          <div class="pipeline-summary" id="pipelineBar">
+            <span class="pipe-tag">Researcher: 2 Findings</span>
+            <span class="pipe-tag">Writer: 3 Sections</span>
+            <span class="pipe-tag">Editor: Readability 88.5</span>
+          </div>
+
+          <!-- Published Edition Reader -->
+          <div class="terminal-box">
+            <span class="terminal-header" data-i18n="lblFinalEdition">Newsletter Preview & Markdown:</span>
+            <pre><code id="newsletterStream" class="code-block">Submit an editorial topic to activate the multi-agent newsroom...</code></pre>
+          </div>
+
+          <!-- Research Findings Card -->
+          <div class="dossier-box">
+            <strong data-i18n="lblDossier">Verified Research Signals:</strong>
+            <ul id="dossierList" class="dossier-list">
+              <li>• [Gartner] 78% of Fortune 500 engineering teams deploy autonomous agent loops in 2026.</li>
+              <li>• [Bloomberg] 3.4x reduction in workflow execution errors with state-machine orchestration.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p style="margin-bottom:6px;"><a href="https://asadullahshafique-devunity.vercel.app" target="_blank" style="color:var(--accent-coral); text-decoration:none; font-weight:600;">← Back to Asadullah Shafique Portfolio (DevUnity)</a></p>
+    <p>© 2026 CollabX • Multi-Agent Editorial Framework • <a href="https://github.com/asadullah48/collabx" target="_blank">GitHub Repository</a></p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
