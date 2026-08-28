@@ -1,5 +1,6 @@
 from typing import List
 from collabx.core.models import EditorialBrief, ResearchDossier, ResearchFinding
+from collabx.core.ids import stable_suffix
 
 class ResearcherAgent:
     """
@@ -26,7 +27,7 @@ class ResearcherAgent:
         ]
 
         return ResearchDossier(
-            dossier_id=f"DOS-{abs(hash(brief.topic)) % 10000}",
+            dossier_id=f"DOS-{stable_suffix(brief.topic, 10000)}",
             topic=brief.topic,
             findings=findings,
             core_themes=["Autonomous Workflows", "State Machine Reliability", "Human-in-the-Loop Governance"]

@@ -2,24 +2,64 @@
 
 > **An orchestrated multi-agent framework coordinating specialized Researcher, Writer, and Editor agents in a collaborative state graph to produce publication-ready newsletters.**
 
+> [!IMPORTANT]
+> **Project status: reference scaffold, not a live agent system.**
+> The domain models, pipeline wiring, HTTP gateway, dashboard, and deployment
+> manifests are real and runnable. The three agents are **not** backed by an LLM —
+> each returns fixed sample content, so every brief currently produces the same
+> newsletter body regardless of topic, tone, or word-count target. Readability,
+> tone, and fact-check scores are placeholder constants. See
+> [Implemented vs. not yet implemented](#-implemented-vs-not-yet-implemented).
+
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
-[![Tests Passing](https://img.shields.io/badge/Tests-200%2B%20Passing-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/Tests-17%20Passing-brightgreen.svg)]()
 [![FastAPI](https://img.shields.io/badge/API-FastAPI%20%3A8014-teal.svg)](http://127.0.0.1:8014/docs)
 [![Author](https://img.shields.io/badge/Author-Asadullah%20Shafique-purple.svg)](https://asadullahshafique-devunity.vercel.app)
 
 ---
 
-## 🚀 Key Value Propositions
+## 🚀 What CollabX Provides
 
-1. **Specialized Multi-Agent Roles**:
-   - **`ResearcherAgent`**: Uncovers breaking industry signals, primary statistics, and executive quotes.
-   - **`WriterAgent`**: Crafts compelling narrative arcs, catchy hooks, and structured body sections.
-   - **`EditorAgent`**: Enforces strict readability benchmarks (Flesch-Kincaid $\ge 80$), verifies facts, and refines tone.
-2. **Collaborative State-Graph Pipeline**: Automatically passes context between agents with built-in revision loops to ensure publication-ready output.
-3. **Dual Markdown & HTML Output**: Produces clean markdown for CMS platforms and responsive HTML for email newsletter broadcasts.
-4. **Zero-Hallucination Fact-Checking**: Ensures all claims and statistics in the writer's draft map back to the researcher's verified dossier.
-5. **Interactive Editorial Studio**: Glassmorphic bilingual (English/Arabic RTL) dashboard with live pipeline progress, multi-agent workspace, and full newsletter reader.
+1. **Specialized Multi-Agent Roles** — three separable stages with distinct
+   responsibilities and a typed hand-off between each:
+   - **`ResearcherAgent`**: produces a `ResearchDossier` of findings and core themes.
+   - **`WriterAgent`**: produces an `ArticleDraft` — headline, hook, and structured sections.
+   - **`EditorAgent`**: produces a `PublishedNewsletter` with feedback and compiled HTML.
+2. **Typed Editorial Domain Model**: eight Pydantic models (`EditorialBrief`,
+   `ResearchDossier`, `ArticleDraft`, `EditorFeedback`, `PublishedNewsletter`, …)
+   that define the contract between stages and the shape of the API response.
+3. **Single-Call Pipeline**: `POST /api/v1/editorial/produce-newsletter` runs
+   Researcher → Writer → Editor and returns the complete edition in one response.
+4. **Deterministic Output**: identical briefs produce identical editions and
+   identical IDs across processes, which makes the pipeline straightforward to test.
+5. **Interactive Editorial Studio**: glassmorphic bilingual (English/Arabic RTL)
+   dashboard that submits a brief and renders the returned edition, research
+   signals, and the editor's critique notes.
+6. **Deployment Manifests**: Dockerfile, Compose service, and a Helm chart with
+   liveness/readiness probes wired to `/healthz` and `/readyz`.
+
+---
+
+## 🧭 Implemented vs. Not Yet Implemented
+
+| Capability | Status |
+| :--- | :--- |
+| Typed models & stage hand-off | ✅ Implemented |
+| FastAPI gateway, health probes, static dashboard | ✅ Implemented |
+| Docker / Compose / Helm packaging | ✅ Implemented |
+| Deterministic, reproducible edition IDs | ✅ Implemented |
+| Markdown → HTML compilation | ⚠️ Block-level only — no inline formatting (`**bold**` is not converted), no lists, no HTML escaping |
+| LLM-backed research, writing, editing | ❌ Not implemented — agents return fixed sample content |
+| Flesch-Kincaid readability scoring | ❌ Not implemented — `readability_score` is the constant `88.5` |
+| Fact-check grounding against the dossier | ❌ Not implemented — `fact_check_passed` is always `True` |
+| Tone alignment scoring | ❌ Not implemented — `tone_alignment_score` is the constant `0.94` |
+| Editor → Writer revision loop | ❌ Not implemented — the engine is a straight line |
+| Brief-driven output (`tone`, `target_word_count`) | ❌ Not implemented — only `topic` reaches the output, in the headline |
+
+> `SPEC.md` describes the **target** design, including the revision loop and the
+> quality gates. It is a specification to build against, not a description of
+> current behaviour.
 
 ---
 
@@ -58,8 +98,8 @@
 git clone https://github.com/asadullah48/collabx.git
 cd collabx
 
-# 2. Install dependencies
-pip install -e .
+# 2. Install the package plus test dependencies
+pip install -e ".[dev]"
 
 # 3. Run automated test suite
 python -m pytest tests -v

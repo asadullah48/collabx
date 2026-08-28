@@ -8,25 +8,48 @@ class EditorialGraph:
     EditorialGraph: Manages collaborative state transitions between Researcher, Writer, and Editor agents,
     supporting automated revision loops if readability falls below threshold.
     """
+    # Readability gate from SPEC.md section 3.
+    READABILITY_THRESHOLD = 80.0
+
+    # NOTE: `readability_score`, `fact_check_passed`, and `tone_alignment_score` are
+    # fixed placeholder values. No Flesch-Kincaid calculation and no dossier grounding
+    # check are implemented yet, so these numbers describe nothing about the draft.
+    # Only the word-count note below is derived from the actual draft.
+    PLACEHOLDER_READABILITY = 88.5
+    PLACEHOLDER_TONE_ALIGNMENT = 0.94
+
     @staticmethod
     def evaluate_draft(draft: ArticleDraft, brief: EditorialBrief) -> EditorFeedback:
-        # Simple readability and length check
         word_count = len(draft.raw_markdown.split())
-        readability = 88.5
+        readability = EditorialGraph.PLACEHOLDER_READABILITY
+        tone_score = EditorialGraph.PLACEHOLDER_TONE_ALIGNMENT
         fact_check = True
-        tone_score = 0.94
+
+        # Report what the word count actually is relative to the brief, rather than
+        # asserting it satisfies the target unconditionally.
+        target = brief.target_word_count
+        if word_count >= target:
+            length_note = f"Word count ({word_count} words) meets the {target}-word brief target."
+        else:
+            shortfall = target - word_count
+            length_note = (
+                f"Word count ({word_count} words) is {shortfall} short of the "
+                f"{target}-word brief target."
+            )
+
         notes = [
-            f"Strong hook and narrative structure aligned with '{brief.tone}'.",
-            f"Word count ({word_count} words) satisfies brief target.",
-            "All cited industry metrics verified against research dossier."
+            f"Hook and narrative structure reviewed against tone '{brief.tone.value}'.",
+            length_note,
+            "Readability, tone, and fact-check scores are placeholders; "
+            "no automated verification is implemented yet."
         ]
-        
+
         return EditorFeedback(
             readability_score=readability,
             fact_check_passed=fact_check,
             tone_alignment_score=tone_score,
             critique_notes=notes,
-            revision_required=False
+            revision_required=readability < EditorialGraph.READABILITY_THRESHOLD
         )
 
     @staticmethod

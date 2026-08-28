@@ -1,0 +1,23 @@
+# Keep the build context to what the image actually needs. `helm/` in particular
+# must stay out: setuptools' flat-layout discovery would treat it as a second
+# top-level package and fail `pip install -e .`.
+helm/
+tests/
+.git/
+.github/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+.env
+README.ar.md
+SPEC.md

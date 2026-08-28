@@ -129,14 +129,12 @@
         <div class="panel glass output-panel">
           <div class="panel-header">
             <span class="panel-title" data-i18n="titleEdition">Published Newsletter Edition</span>
-            <span id="qualityBadge" class="badge badge-success">READY</span>
+            <span id="qualityBadge" class="badge">AWAITING BRIEF</span>
           </div>
 
-          <!-- Multi-Agent Pipeline Status Bar -->
+          <!-- Multi-Agent Pipeline Status Bar (populated from the API response) -->
           <div class="pipeline-summary" id="pipelineBar">
-            <span class="pipe-tag">Researcher: 2 Findings</span>
-            <span class="pipe-tag">Writer: 3 Sections</span>
-            <span class="pipe-tag">Editor: Readability 88.5</span>
+            <span class="pipe-tag">Editor verdict appears after a run</span>
           </div>
 
           <!-- Published Edition Reader -->
@@ -149,8 +147,15 @@
           <div class="dossier-box">
             <strong data-i18n="lblDossier">Verified Research Signals:</strong>
             <ul id="dossierList" class="dossier-list">
-              <li>• [Gartner] 78% of Fortune 500 engineering teams deploy autonomous agent loops in 2026.</li>
-              <li>• [Bloomberg] 3.4x reduction in workflow execution errors with state-machine orchestration.</li>
+              <li>• Research signals appear here once the pipeline runs.</li>
+            </ul>
+          </div>
+
+          <!-- Editor Critique Card -->
+          <div class="dossier-box">
+            <strong data-i18n="lblCritique">Editor Critique Notes:</strong>
+            <ul id="critiqueList" class="dossier-list">
+              <li>• Editor notes appear here once the pipeline runs.</li>
             </ul>
           </div>
         </div>

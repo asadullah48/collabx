@@ -1,5 +1,6 @@
 from typing import List
 from collabx.core.models import EditorialBrief, ResearchDossier, ArticleDraft, NewsletterSection
+from collabx.core.ids import stable_suffix
 
 class WriterAgent:
     """
@@ -34,7 +35,7 @@ class WriterAgent:
         words = len(full_md.split())
 
         return ArticleDraft(
-            draft_id=f"DFT-{abs(hash(brief.topic)) % 10000}",
+            draft_id=f"DFT-{stable_suffix(brief.topic, 10000)}",
             headline=headline,
             subheadline=subheadline,
             hook=hook,

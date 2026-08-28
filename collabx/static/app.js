@@ -25,7 +25,8 @@ const TRANSLATIONS = {
     btnExecuteProduce: "🚀 Run Multi-Agent Team & Publish",
     titleEdition: "Published Newsletter Edition",
     lblFinalEdition: "Newsletter Preview & Markdown:",
-    lblDossier: "Verified Research Signals:"
+    lblDossier: "Verified Research Signals:",
+    lblCritique: "Editor Critique Notes:"
   },
   ar: {
     badgeTitle: "فريق التحرير الذكي",
@@ -49,7 +50,8 @@ const TRANSLATIONS = {
     btnExecuteProduce: "🚀 تشغيل فريق الوكلاء وإصدار النشرة",
     titleEdition: "الإصدار التحريري المنشور",
     lblFinalEdition: "معاينة النشرة البريدية وكود Markdown:",
-    lblDossier: "المؤشرات والأدلة البحثية الموثقة:"
+    lblDossier: "المؤشرات والأدلة البحثية الموثقة:",
+    lblCritique: "ملاحظات المحرر التحريرية:"
   }
 };
 
@@ -140,6 +142,11 @@ async function runEditorialTask() {
       })
     });
 
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(`Gateway returned ${res.status}: ${detail.slice(0, 200)}`);
+    }
+
     const data = await res.json();
     renderNewsletter(data);
 
@@ -151,21 +158,50 @@ async function runEditorialTask() {
   }
 }
 
+// Readability gate defined in SPEC.md section 3 (Flesch-Kincaid >= 80).
+const READABILITY_THRESHOLD = 80.0;
+
 function renderNewsletter(data) {
+  const fb = data.feedback;
+
+  // Report the verdict the Editor actually returned, not a fixed "APPROVED".
+  const approved = fb.fact_check_passed
+    && !fb.revision_required
+    && fb.readability_score >= READABILITY_THRESHOLD;
+
   const badge = document.getElementById('qualityBadge');
-  badge.className = 'badge badge-success';
-  badge.innerText = `READABILITY: ${data.feedback.readability_score} / 100 (APPROVED)`;
+  badge.className = 'badge ' + (approved ? 'badge-success' : 'badge-warning');
+  badge.innerText = `READABILITY: ${fb.readability_score.toFixed(1)} / 100 `
+    + `(${approved ? 'APPROVED' : 'REVISION REQUIRED'})`;
 
   // Pipeline Bar
   const bar = document.getElementById('pipelineBar');
-  bar.innerHTML = `
-    <span class="pipe-tag">Read Time: ${data.read_time_minutes} Min</span>
-    <span class="pipe-tag">Tone: ${data.feedback.tone_alignment_score * 100}% Aligned</span>
-    <span class="pipe-tag">Fact-Check: PASSED</span>
-  `;
+  bar.innerHTML = '';
+  const tags = [
+    `Read Time: ${data.read_time_minutes} Min`,
+    `Tone: ${Math.round(fb.tone_alignment_score * 100)}% Aligned`,
+    `Fact-Check: ${fb.fact_check_passed ? 'PASSED' : 'FAILED'}`
+  ];
+  tags.forEach(text => {
+    const span = document.createElement('span');
+    span.className = 'pipe-tag';
+    span.innerText = text;
+    bar.appendChild(span);
+  });
 
   // Newsletter Markdown
   document.getElementById('newsletterStream').innerText = data.final_markdown;
+
+  // Editor critique notes
+  const critique = document.getElementById('critiqueList');
+  if (critique) {
+    critique.innerHTML = '';
+    fb.critique_notes.forEach(note => {
+      const li = document.createElement('li');
+      li.innerText = `• ${note}`;
+      critique.appendChild(li);
+    });
+  }
 
   // Research Dossier List
   const list = document.getElementById('dossierList');

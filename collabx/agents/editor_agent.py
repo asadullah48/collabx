@@ -1,5 +1,6 @@
 from collabx.core.models import EditorialBrief, ArticleDraft, EditorFeedback, PublishedNewsletter, ResearchDossier
 from collabx.core.editorial_graph import EditorialGraph
+from collabx.core.ids import stable_suffix
 
 class EditorAgent:
     """
@@ -17,7 +18,7 @@ class EditorAgent:
         read_time = max(1, round(draft.word_count / 200))
 
         return PublishedNewsletter(
-            edition_id=f"ED-{abs(hash(brief.topic)) % 100000}",
+            edition_id=f"ED-{stable_suffix(brief.topic, 100000)}",
             title=draft.headline,
             subtitle=draft.subheadline,
             final_markdown=draft.raw_markdown,

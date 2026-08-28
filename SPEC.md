@@ -1,5 +1,11 @@
 # CollabX: Multi-Agent Editorial & Newsletter Team Framework Specification
 
+> [!NOTE]
+> This document specifies the **target** design. Several elements below — the
+> readability gate, fact-check verification, tone scoring, and the Editor → Writer
+> revision loop — are not yet implemented in the codebase. See the
+> "Implemented vs. Not Yet Implemented" table in `README.md` for current status.
+
 ## 1. Executive Summary & Problem Formulation
 
 In corporate communications, industry newsletters, and analyst research, high-quality publication requires distinct cognitive specialties: deep empirical research, captivating long-form writing, and ruthless editorial critique. Monolithic single-prompt LLMs produce generic, uninspired content filled with factual hallucinations and inconsistent tone.

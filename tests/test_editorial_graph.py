@@ -25,3 +25,48 @@ def test_editorial_graph_html_compilation():
     assert "<h2>Section Heading</h2>" in html
     assert "<blockquote>Featured quote</blockquote>" in html
     assert "<p>Paragraph body text.</p>" in html
+
+
+def _draft_with_word_count(n: int) -> ArticleDraft:
+    body = " ".join(["word"] * n)
+    return ArticleDraft(
+        draft_id="D-LEN",
+        headline="H",
+        subheadline="S",
+        hook="Hook",
+        sections=[NewsletterSection(heading="Sec", content_markdown=body)],
+        raw_markdown=body,
+        word_count=n,
+    )
+
+
+def test_critique_reports_shortfall_when_draft_is_under_target():
+    brief = EditorialBrief(topic="Enterprise AI", target_word_count=200)
+    feedback = EditorialGraph.evaluate_draft(_draft_with_word_count(150), brief)
+    note = next(n for n in feedback.critique_notes if "Word count" in n)
+    assert "50 short" in note
+    assert "meets" not in note
+
+
+def test_critique_reports_target_met_when_draft_is_long_enough():
+    brief = EditorialBrief(topic="Enterprise AI", target_word_count=100)
+    feedback = EditorialGraph.evaluate_draft(_draft_with_word_count(150), brief)
+    note = next(n for n in feedback.critique_notes if "Word count" in n)
+    assert "meets" in note
+    assert "short of" not in note
+
+
+def test_critique_uses_tone_value_not_python_repr():
+    brief = EditorialBrief(topic="Enterprise AI")
+    feedback = EditorialGraph.evaluate_draft(_draft_with_word_count(10), brief)
+    joined = " ".join(feedback.critique_notes)
+    assert "TECH_PIONEER" in joined
+    assert "ToneStyle." not in joined
+
+
+def test_revision_required_tracks_the_readability_threshold():
+    brief = EditorialBrief(topic="Enterprise AI")
+    feedback = EditorialGraph.evaluate_draft(_draft_with_word_count(10), brief)
+    assert feedback.revision_required == (
+        feedback.readability_score < EditorialGraph.READABILITY_THRESHOLD
+    )
