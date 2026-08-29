@@ -16,6 +16,27 @@ prose came from a language model or from the built-in template engine.
 > opt-in upgrade ([free options below](#-running-it-with-a-model-free)), never a
 > requirement, because a project you cannot run is a screenshot.
 
+### What it does, in one request
+
+```bash
+curl -X POST localhost:8014/api/v1/editorial/produce-newsletter \
+  -H 'Content-Type: application/json' -d '{"topic":"Agent Workforces"}'
+```
+
+The Researcher assembles a dossier, the Writer drafts from it, and the Editor
+scores the result and **sends it back for revision if it fails a gate**:
+
+```
+Readability (Flesch Reading Ease) is 53.7 against a 55 floor for
+  'Engaging Storyteller'. Short by 1.3 points.
+Fact-check: 3 of 3 checkable claims trace to the research dossier.
+Tone alignment with 'Engaging Storyteller' is 0.92 against a 0.75 floor.
+Sources: built-in sample fixture, identical for every topic. Not real research.
+Editorial loop: 1 revision round applied, all gates passing at publication.
+```
+
+Every number there is measured from the draft. None of them is a constant.
+
 <!-- The CI badge is live: it reflects the actual result of the most recent run
      on main, across Python 3.10-3.13 on Linux and Windows. It is not a static
      image asserting a number that nothing checks. -->
@@ -200,8 +221,18 @@ editorial desk.
 - **Swagger OpenAPI Docs**: [http://127.0.0.1:8014/docs](http://127.0.0.1:8014/docs)
 - **Active provider**: [http://127.0.0.1:8014/api/v1/providers](http://127.0.0.1:8014/api/v1/providers)
 
-Deployment to free hosting (Hugging Face Spaces, Render, Fly) is documented in
-[DEPLOY.md](DEPLOY.md).
+### Live demo
+
+Deploying takes about 30 seconds and costs nothing —
+[import the repo on Vercel](https://vercel.com/new) and press Deploy.
+`vercel.json` and `api/index.py` are already committed, so there is nothing to
+configure.
+
+The hosted build runs the **deterministic engine**: no API key on a public URL,
+no free-tier quota that a crawler can drain, and therefore a link that cannot
+break. Hugging Face Spaces, Render and Fly are covered in
+[DEPLOY.md](DEPLOY.md), which also shows how to publish the URL to this
+repository's GitHub sidebar.
 
 ---
 

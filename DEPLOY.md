@@ -10,6 +10,40 @@ the deterministic engine, which behaves identically for every visitor, forever.
 
 ---
 
+## Vercel (free, ~30 seconds)
+
+`vercel.json` and `api/index.py` are already committed, so Vercel needs no
+configuration. It detects the Python builder, installs `requirements.txt`, and
+serves `collabx.server:app` through `api/index.py`.
+
+1. <https://vercel.com/new> → **Import Git Repository** → `asadullah48/collabx`
+2. Framework preset: **Other**. Leave every build setting untouched.
+3. **Deploy.**
+
+No environment variables are needed. The demo runs the deterministic engine
+because `vercel.json` pins `COLLABX_PROVIDER=deterministic`, so the public URL
+holds no key and cannot exhaust anyone's quota.
+
+Once it is live, publish the link on the repository itself so it shows in the
+GitHub sidebar:
+
+```bash
+gh repo edit asadullah48/collabx --homepage "https://<your-deployment>.vercel.app"
+```
+
+Verify the deployment:
+
+```bash
+curl -s https://<your-deployment>.vercel.app/healthz
+curl -s https://<your-deployment>.vercel.app/api/v1/providers
+```
+
+`/api/v1/providers` should report `"active": "deterministic"` and
+`"llm_backed": false`. If it reports anything else, a stray environment
+variable is set on the project.
+
+---
+
 ## Hugging Face Spaces (free, recommended)
 
 Spaces is where people go looking for AI projects, and the Docker SDK runs this
