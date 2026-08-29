@@ -1,10 +1,20 @@
 # CollabX: Multi-Agent Editorial & Newsletter Team Framework Specification
 
 > [!NOTE]
-> This document specifies the **target** design. Several elements below — the
-> readability gate, fact-check verification, tone scoring, and the Editor → Writer
-> revision loop — are not yet implemented in the codebase. See the
-> "Implemented vs. Not Yet Implemented" table in `README.md` for current status.
+> This document specifies the **target** design. The readability gate,
+> fact-check verification, tone scoring, and the Editor → Writer revision loop
+> are now implemented; LLM-backed research and writing are not. Two details
+> differ from the text below, deliberately:
+>
+> - The readability gate is **per tone**, not a global Flesch $\ge 80$. Measured
+>   against real prose, 80 is 6th-grade reading level and unreachable for this
+>   audience — the original sample draft scored 11.8. Floors now range from 30
+>   (Deep Dive Analyst) to 55 (Engaging Storyteller).
+> - Fact-check verification covers **statistics and quotations**, not every
+>   assertion. Prose claims need semantic matching, which arrives with the
+>   model-backed agents.
+>
+> See the "Implemented vs. Not Yet Implemented" table in `README.md`.
 
 ## 1. Executive Summary & Problem Formulation
 

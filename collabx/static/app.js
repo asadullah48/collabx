@@ -158,16 +158,14 @@ async function runEditorialTask() {
   }
 }
 
-// Readability gate defined in SPEC.md section 3 (Flesch-Kincaid >= 80).
-const READABILITY_THRESHOLD = 80.0;
-
 function renderNewsletter(data) {
   const fb = data.feedback;
 
-  // Report the verdict the Editor actually returned, not a fixed "APPROVED".
-  const approved = fb.fact_check_passed
-    && !fb.revision_required
-    && fb.readability_score >= READABILITY_THRESHOLD;
+  // Report the verdict the Editor actually returned, not a fixed "APPROVED"
+  // and not a threshold recomputed here. The readability floor is per tone and
+  // lives on the server; duplicating a number in the client is how the badge
+  // ends up disagreeing with the critique underneath it.
+  const approved = !fb.revision_required;
 
   const badge = document.getElementById('qualityBadge');
   badge.className = 'badge ' + (approved ? 'badge-success' : 'badge-warning');

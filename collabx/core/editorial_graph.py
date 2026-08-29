@@ -1,56 +1,133 @@
+"""Editorial evaluation and publication formatting.
+
+`evaluate_draft` used to return three constants. It now runs three real gates
+and reports the margin on each:
+
+    readability   Flesch Reading Ease against the tone's floor (tone.py)
+    grounding     statistics and quotations traced to the dossier (grounding.py)
+    tone          sentence length and long-word density against the tone profile
+
+Word count is reported but is **not** a gate. The Writer composes from the
+dossier and cannot honestly pad to an arbitrary target, so a shortfall is an
+editorial signal about the brief or the research, not a defect in the draft.
+
+When the loop exhausts its budget with gates still failing, the edition is
+published anyway with `revision_required=True` and a critique naming each
+failure. The endpoint stays total; the verdict carries the bad news.
+"""
+from dataclasses import dataclass
 from html import escape
-from typing import Dict, Any, Tuple
+from typing import List
+
+from collabx.core.grounding import check_grounding, topic_coherence_note
 from collabx.core.models import (
-    EditorialBrief, ResearchDossier, ArticleDraft, EditorFeedback, PublishedNewsletter
+    ArticleDraft,
+    EditorFeedback,
+    EditorialBrief,
+    ResearchDossier,
 )
+from collabx.core.readability import flesch_reading_ease
+from collabx.core.tone import profile_for, tone_alignment, tone_diagnostics
+
+
+@dataclass(frozen=True)
+class QualityGate:
+    """One pass/fail check, with the margin that decided it."""
+
+    name: str
+    passed: bool
+    detail: str
+
 
 class EditorialGraph:
     """
     EditorialGraph: Manages collaborative state transitions between Researcher, Writer, and Editor agents,
     supporting automated revision loops if readability falls below threshold.
     """
-    # Readability gate from SPEC.md section 3.
-    READABILITY_THRESHOLD = 80.0
 
-    # NOTE: `readability_score`, `fact_check_passed`, and `tone_alignment_score` are
-    # fixed placeholder values. No Flesch-Kincaid calculation and no dossier grounding
-    # check are implemented yet, so these numbers describe nothing about the draft.
-    # Only the word-count note below is derived from the actual draft.
-    PLACEHOLDER_READABILITY = 88.5
-    PLACEHOLDER_TONE_ALIGNMENT = 0.94
+    # Minimum acceptable tone alignment. Both proxies (sentence length, long-word
+    # density) score 1.0 inside the tone's envelope, so 0.75 tolerates one proxy
+    # overshooting its target by half before the gate trips.
+    TONE_ALIGNMENT_FLOOR = 0.75
 
     @staticmethod
-    def evaluate_draft(draft: ArticleDraft, brief: EditorialBrief) -> EditorFeedback:
-        word_count = len(draft.raw_markdown.split())
-        readability = EditorialGraph.PLACEHOLDER_READABILITY
-        tone_score = EditorialGraph.PLACEHOLDER_TONE_ALIGNMENT
-        fact_check = True
+    def gates_for(
+        draft: ArticleDraft, brief: EditorialBrief, dossier: ResearchDossier
+    ) -> List[QualityGate]:
+        """Run every quality gate against `draft`, returning each with its margin."""
+        profile = profile_for(brief.tone)
+        markdown = draft.raw_markdown
 
-        # Report what the word count actually is relative to the brief, rather than
-        # asserting it satisfies the target unconditionally.
-        target = brief.target_word_count
-        if word_count >= target:
-            length_note = f"Word count ({word_count} words) meets the {target}-word brief target."
-        else:
-            shortfall = target - word_count
-            length_note = (
-                f"Word count ({word_count} words) is {shortfall} short of the "
-                f"{target}-word brief target."
+        readability = flesch_reading_ease(markdown)
+        readability_ok = readability >= profile.readability_floor
+        readability_detail = (
+            f"Readability (Flesch Reading Ease) is {readability:.1f} against a "
+            f"{profile.readability_floor:.0f} floor for '{profile.label}'."
+        )
+        if not readability_ok:
+            readability_detail += (
+                f" Short by {profile.readability_floor - readability:.1f} points."
             )
 
-        notes = [
-            f"Hook and narrative structure reviewed against tone '{brief.tone.value}'.",
-            length_note,
-            "Readability, tone, and fact-check scores are placeholders; "
-            "no automated verification is implemented yet."
+        grounding = check_grounding(draft, dossier)
+
+        alignment = tone_alignment(markdown, brief.tone)
+        alignment_ok = alignment >= EditorialGraph.TONE_ALIGNMENT_FLOOR
+        alignment_detail = (
+            f"Tone alignment with '{profile.label}' is {alignment:.2f} against a "
+            f"{EditorialGraph.TONE_ALIGNMENT_FLOOR:.2f} floor."
+        )
+
+        return [
+            QualityGate("readability", readability_ok, readability_detail),
+            QualityGate("grounding", grounding.passed, " ".join(grounding.notes())),
+            QualityGate("tone_alignment", alignment_ok, alignment_detail),
         ]
+
+    @staticmethod
+    def evaluate_draft(
+        draft: ArticleDraft, brief: EditorialBrief, dossier: ResearchDossier
+    ) -> EditorFeedback:
+        """Score `draft` and decide whether it needs another revision round."""
+        markdown = draft.raw_markdown
+
+        readability = flesch_reading_ease(markdown)
+        alignment = tone_alignment(markdown, brief.tone)
+        grounding = check_grounding(draft, dossier)
+        gates = EditorialGraph.gates_for(draft, brief, dossier)
+
+        notes: List[str] = [gate.detail for gate in gates]
+        notes.extend(tone_diagnostics(markdown, brief.tone))
+        notes.append(EditorialGraph._length_note(markdown, brief))
+
+        drift = topic_coherence_note(brief.topic, dossier)
+        if drift:
+            notes.append(drift)
+
+        failed = [gate.name for gate in gates if not gate.passed]
+        if failed:
+            notes.append(f"Revision required. Failing gates: {', '.join(failed)}.")
 
         return EditorFeedback(
             readability_score=readability,
-            fact_check_passed=fact_check,
-            tone_alignment_score=tone_score,
+            fact_check_passed=grounding.passed,
+            tone_alignment_score=alignment,
             critique_notes=notes,
-            revision_required=readability < EditorialGraph.READABILITY_THRESHOLD
+            revision_required=bool(failed),
+        )
+
+    @staticmethod
+    def _length_note(markdown: str, brief: EditorialBrief) -> str:
+        """Report length against the brief target. Reported, never gated."""
+        word_count = len(markdown.split())
+        target = brief.target_word_count
+        if word_count >= target:
+            return f"Word count ({word_count} words) meets the {target}-word brief target."
+        return (
+            f"Word count ({word_count} words) is {target - word_count} short of the "
+            f"{target}-word brief target. The draft is composed from the research "
+            f"dossier, so a shortfall usually means the research is thinner than "
+            f"the brief assumes."
         )
 
     @staticmethod

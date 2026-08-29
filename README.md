@@ -3,17 +3,18 @@
 > **An orchestrated multi-agent framework coordinating specialized Researcher, Writer, and Editor agents in a collaborative state graph to produce publication-ready newsletters.**
 
 > [!IMPORTANT]
-> **Project status: reference scaffold, not a live agent system.**
-> The domain models, pipeline wiring, HTTP gateway, dashboard, and deployment
-> manifests are real and runnable. The three agents are **not** backed by an LLM —
-> each returns fixed sample content, so every brief currently produces the same
-> newsletter body regardless of topic, tone, or word-count target. Readability,
-> tone, and fact-check scores are placeholder constants. See
+> **Project status: a working deterministic editorial engine, not an LLM agent system.**
+> The quality gates are real. Readability is a computed Flesch Reading Ease score,
+> fact-checking traces every statistic and quotation back to the research dossier,
+> and a bounded Editor → Writer revision loop rewrites drafts that miss their
+> gates. The **Researcher is still a fixture** — it returns the same two findings
+> for any topic — and the **Writer is a template engine, not a language model**.
+> Wiring the agents to a model is the remaining work. See
 > [Implemented vs. not yet implemented](#-implemented-vs-not-yet-implemented).
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
-[![Tests Passing](https://img.shields.io/badge/Tests-17%20Passing-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/Tests-128%20Passing-brightgreen.svg)]()
 [![FastAPI](https://img.shields.io/badge/API-FastAPI%20%3A8014-teal.svg)](http://127.0.0.1:8014/docs)
 [![Author](https://img.shields.io/badge/Author-Asadullah%20Shafique-purple.svg)](https://asadullahshafique-devunity.vercel.app)
 
@@ -29,8 +30,15 @@
 2. **Typed Editorial Domain Model**: eight Pydantic models (`EditorialBrief`,
    `ResearchDossier`, `ArticleDraft`, `EditorFeedback`, `PublishedNewsletter`, …)
    that define the contract between stages and the shape of the API response.
-3. **Single-Call Pipeline**: `POST /api/v1/editorial/produce-newsletter` runs
-   Researcher → Writer → Editor and returns the complete edition in one response.
+3. **Single-Call Pipeline with a Revision Loop**:
+   `POST /api/v1/editorial/produce-newsletter` runs Researcher → Writer → Editor
+   and returns the complete edition in one response. The Editor acts as a gate:
+   a draft that misses its readability, grounding, or tone gate is sent back to
+   the Writer under tighter limits. The loop is bounded and stops when the gates
+   pass, the budget is spent, or a round changes nothing.
+   **The endpoint is total.** If the budget runs out with gates still failing,
+   the edition is still returned, carrying `revision_required: true` and a
+   critique naming each failing gate and its margin.
 4. **Deterministic Output**: identical briefs produce identical editions and
    identical IDs across processes, which makes the pipeline straightforward to test.
 5. **Interactive Editorial Studio**: glassmorphic bilingual (English/Arabic RTL)
@@ -50,17 +58,32 @@
 | Docker / Compose / Helm packaging | ✅ Implemented |
 | Deterministic, reproducible edition IDs | ✅ Implemented |
 | HTML escaping in `html_body` | ✅ Implemented — text nodes are escaped, so a topic carrying markup cannot become live HTML |
+| Flesch Reading Ease scoring | ✅ Implemented — computed from the draft in `core/readability.py` |
+| Fact-check grounding against the dossier | ✅ Implemented — statistics and quotations only, see the caveat below |
+| Tone alignment scoring | ✅ Implemented — sentence length and long-word density against a per-tone profile |
+| Editor → Writer revision loop | ✅ Implemented — bounded, and reports how many rounds it used |
+| Brief-driven output (`tone`, `target_word_count`) | ✅ Implemented — tone drives headline, hook, register and the readability floor; word count drives elaboration depth |
+| Topic-drift detection | ✅ Implemented — warns when the dossier shares no vocabulary with the brief topic |
 | Markdown → HTML compilation | ⚠️ Block-level only — no inline formatting (`**bold**` is not converted), no lists |
-| LLM-backed research, writing, editing | ❌ Not implemented — agents return fixed sample content |
-| Flesch-Kincaid readability scoring | ❌ Not implemented — `readability_score` is the constant `88.5` |
-| Fact-check grounding against the dossier | ❌ Not implemented — `fact_check_passed` is always `True` |
-| Tone alignment scoring | ❌ Not implemented — `tone_alignment_score` is the constant `0.94` |
-| Editor → Writer revision loop | ❌ Not implemented — the engine is a straight line |
-| Brief-driven output (`tone`, `target_word_count`) | ❌ Not implemented — only `topic` reaches the output, in the headline |
+| Fact-check coverage | ⚠️ Statistics and quotations only. A confidently wrong *prose* sentence passes: verifying it needs semantic matching, not string comparison |
+| Word-count target | ⚠️ Reported, never gated. The Writer composes from the dossier and will not pad to hit a number |
+| LLM-backed research and writing | ❌ Not implemented — the Researcher returns the same two findings for any topic, and the Writer is a template engine |
 
-> `SPEC.md` describes the **target** design, including the revision loop and the
-> quality gates. It is a specification to build against, not a description of
-> current behaviour.
+### What the scores do and do not mean
+
+- **`readability_score`** is a real Flesch Reading Ease value. The gate is **per
+  tone**, not global. A single 80.0 threshold was unreachable: FRE 80–89 is
+  6th-grade reading level, while this newsletter's stated audience is "CTOs,
+  Founders & Enterprise Architects", which is the 30–59 band.
+- **`fact_check_passed`** means *no unsupported statistic or quotation was
+  found*. A draft containing no figures and no quotations has nothing to check,
+  and the critique notes say so explicitly rather than implying verification
+  happened.
+- **`tone_alignment_score`** is two structural proxies, not a judgement of
+  voice. A draft can score 1.00 and still sound wrong.
+
+> `SPEC.md` describes the **target** design. The revision loop and quality gates
+> it specifies are now built; LLM-backed agents are not.
 
 ---
 
