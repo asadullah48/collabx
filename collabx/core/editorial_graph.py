@@ -22,6 +22,7 @@ from typing import List
 from collabx.core.grounding import check_grounding, topic_coherence_note
 from collabx.core.models import (
     ArticleDraft,
+    DossierProvenance,
     EditorFeedback,
     EditorialBrief,
     ResearchDossier,
@@ -100,6 +101,8 @@ class EditorialGraph:
         notes.extend(tone_diagnostics(markdown, brief.tone))
         notes.append(EditorialGraph._length_note(markdown, brief))
 
+        notes.append(EditorialGraph._provenance_note(dossier))
+
         drift = topic_coherence_note(brief.topic, dossier)
         if drift:
             notes.append(drift)
@@ -114,6 +117,34 @@ class EditorialGraph:
             tone_alignment_score=alignment,
             critique_notes=notes,
             revision_required=bool(failed),
+        )
+
+    @staticmethod
+    def _provenance_note(dossier: ResearchDossier) -> str:
+        """State what the fact-check actually proves, given where research came from.
+
+        Without this the response reads identically whether the sources are real
+        or were invented moments ago by the same class of model that wrote the
+        article. `fact_check_passed: true` against a generated dossier means the
+        Writer copied the Researcher accurately -- nothing more.
+        """
+        if dossier.provenance is DossierProvenance.CALLER_SUPPLIED:
+            return (
+                "Sources: caller-supplied research. Claims are verified against "
+                "sources this system did not write, so the fact-check is meaningful."
+            )
+        if dossier.provenance is DossierProvenance.MODEL_GENERATED:
+            return (
+                "Sources: MODEL-GENERATED and unverified. The findings were written "
+                "by a language model, not gathered from the world, and carry no real "
+                "citations. A passing fact-check here proves only that the article "
+                "matches the generated dossier -- it is not evidence of accuracy. "
+                "Supply your own dossier to make this check meaningful."
+            )
+        return (
+            "Sources: built-in sample fixture, identical for every topic. Useful for "
+            "demonstrating the pipeline; not real research. Supply your own dossier "
+            "to make the fact-check meaningful."
         )
 
     @staticmethod

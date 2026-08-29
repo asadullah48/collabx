@@ -2,20 +2,27 @@
 
 > **An orchestrated multi-agent framework coordinating specialized Researcher, Writer, and Editor agents in a collaborative state graph to produce publication-ready newsletters.**
 
-> [!IMPORTANT]
-> **Project status: a working deterministic editorial engine, not an LLM agent system.**
-> The quality gates are real. Readability is a computed Flesch Reading Ease score,
-> fact-checking traces every statistic and quotation back to the research dossier,
-> and a bounded Editor → Writer revision loop rewrites drafts that miss their
-> gates. The **Researcher is still a fixture** — it returns the same two findings
-> for any topic — and the **Writer is a template engine, not a language model**.
-> Wiring the agents to a model is the remaining work. See
-> [Implemented vs. not yet implemented](#-implemented-vs-not-yet-implemented).
+**The interesting part is not that it calls a model. It is that it does not trust one.**
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+CollabX scores every draft it produces: real Flesch Reading Ease against a
+per-tone floor, every statistic and quotation traced back to a source dossier,
+and a bounded Editor → Writer revision loop that sends failing drafts back with
+the specific critique that failed them. Those gates run identically whether the
+prose came from a language model or from the built-in template engine.
+
+> [!IMPORTANT]
+> **It runs with no API key, no model, and no network.** That is the default.
+> `git clone`, `pip install -e .`, `uvicorn` — and it works. A model is an
+> opt-in upgrade ([free options below](#-running-it-with-a-model-free)), never a
+> requirement, because a project you cannot run is a screenshot.
+
+<!-- The CI badge is live: it reflects the actual result of the most recent run
+     on main, across Python 3.10-3.13 on Linux and Windows. It is not a static
+     image asserting a number that nothing checks. -->
+[![CI](https://github.com/asadullah48/collabx/actions/workflows/ci.yml/badge.svg)](https://github.com/asadullah48/collabx/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
-[![Tests Passing](https://img.shields.io/badge/Tests-128%20Passing-brightgreen.svg)]()
-[![FastAPI](https://img.shields.io/badge/API-FastAPI%20%3A8014-teal.svg)](http://127.0.0.1:8014/docs)
+[![No API key required](https://img.shields.io/badge/API%20key-not%20required-brightgreen.svg)](#-running-it-with-a-model-free)
 [![Author](https://img.shields.io/badge/Author-Asadullah%20Shafique-purple.svg)](https://asadullahshafique-devunity.vercel.app)
 
 ---
@@ -67,7 +74,10 @@
 | Markdown → HTML compilation | ⚠️ Block-level only — no inline formatting (`**bold**` is not converted), no lists |
 | Fact-check coverage | ⚠️ Statistics and quotations only. A confidently wrong *prose* sentence passes: verifying it needs semantic matching, not string comparison |
 | Word-count target | ⚠️ Reported, never gated. The Writer composes from the dossier and will not pad to hit a number |
-| LLM-backed research and writing | ❌ Not implemented — the Researcher returns the same two findings for any topic, and the Writer is a template engine |
+| Pluggable model providers | ✅ Implemented — Ollama (local, free), Gemini (free tier), or none. Zero vendor SDKs: every provider is plain HTTP via the standard library |
+| Caller-supplied research | ✅ Implemented — POST your own dossier and the fact-check verifies against sources this system did not write |
+| Source provenance labelling | ✅ Implemented — every response says whether research was `CALLER_SUPPLIED`, `MODEL_GENERATED`, or the built-in `FIXTURE` |
+| Automatic web research | ❌ Not implemented — a model cannot browse. Model-drafted findings are labelled unverified and are **never** given fabricated source URLs |
 
 ### What the scores do and do not mean
 
@@ -81,6 +91,57 @@
   happened.
 - **`tone_alignment_score`** is two structural proxies, not a judgement of
   voice. A draft can score 1.00 and still sound wrong.
+- **Provenance decides what any of it is worth.** The Editor verifies the
+  Writer against the dossier, so the fact-check is only as good as the research
+  behind it. Against a model-generated dossier, `fact_check_passed: true` means
+  the Writer copied the Researcher faithfully — nothing about the world. Every
+  response says which case it is, in plain language.
+
+---
+
+## 🔌 Running it with a model (free)
+
+Three ways, none of which cost anything:
+
+| | Setup | Key | Cost |
+| :--- | :--- | :--- | :--- |
+| **Deterministic** (default) | nothing | none | free |
+| **Ollama** | `ollama pull llama3.2` | none | free, local, offline |
+| **Gemini** | [free key](https://aistudio.google.com/apikey) | `GEMINI_API_KEY` | free tier |
+
+```bash
+COLLABX_PROVIDER=ollama uvicorn collabx.server:app --port 8014
+COLLABX_PROVIDER=gemini uvicorn collabx.server:app --port 8014
+
+curl -s localhost:8014/api/v1/providers   # which engine is live (never echoes a key)
+```
+
+If a provider is unreachable, out of quota, or returns something unusable, the
+request **falls back to the deterministic engine and still succeeds**. A missing
+model degrades the quality of the output, never the availability of the service.
+
+### Making the fact-check mean something
+
+Post your own research and the gate verifies against sources CollabX did not
+write. This is the mode the project is actually for:
+
+```bash
+curl -X POST localhost:8014/api/v1/editorial/produce-newsletter \
+  -H 'Content-Type: application/json' -d '{
+    "topic": "Regional Dairy Pricing Volatility",
+    "dossier": {
+      "dossier_id": "D1",
+      "topic": "Regional Dairy Pricing Volatility",
+      "findings": [{
+        "headline": "Farmgate prices swung sharply in Q3",
+        "statistic": "Farmgate milk prices moved 12% between July and September.",
+        "source_url": "https://example.gov/dairy/q3-report",
+        "verified_quote": "Processors absorbed most of the volatility."
+      }],
+      "core_themes": ["Dairy pricing volatility"]
+    }
+  }'
+```
 
 > `SPEC.md` describes the **target** design. The revision loop and quality gates
 > it specifies are now built; LLM-backed agents are not.
@@ -132,8 +193,37 @@ python -m pytest tests -v
 uvicorn collabx.server:app --host 127.0.0.1 --port 8014 --reload
 ```
 
+No API key, no model download, no configuration. Step 4 serves a working
+editorial desk.
+
 - **Interactive Editorial Studio**: [http://127.0.0.1:8014/](http://127.0.0.1:8014/)
 - **Swagger OpenAPI Docs**: [http://127.0.0.1:8014/docs](http://127.0.0.1:8014/docs)
+- **Active provider**: [http://127.0.0.1:8014/api/v1/providers](http://127.0.0.1:8014/api/v1/providers)
+
+Deployment to free hosting (Hugging Face Spaces, Render, Fly) is documented in
+[DEPLOY.md](DEPLOY.md).
+
+---
+
+## 🧪 How this is verified
+
+Claims in this README are checked, because an earlier version of this project
+carried a "200+ tests" badge over a suite of 10 tautological ones.
+
+- **152 tests**, run by [CI](.github/workflows/ci.yml) on Python 3.10–3.13,
+  Linux and Windows.
+- **The wheel is installed to a clean prefix and run from outside the source
+  tree** on every CI run. The suite passes whether or not packaging works,
+  because pytest imports from the working directory — this repository has
+  already shipped a build that was broken while every test passed.
+- **The API is booted and hit with real HTTP requests** in CI, not just
+  TestClient.
+- **Every quality feature is mutation-tested.** Reverting readability scoring,
+  grounding, tone scoring, the per-tone floors, the revision loop, HTML
+  escaping, or span protection each turns tests red. A test that still passes
+  with the feature removed is decoration.
+- **CI never calls a model** (`COLLABX_PROVIDER=deterministic`), so runs are
+  hermetic: no key, no network, no flake.
 
 ---
 

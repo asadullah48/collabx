@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A new push supersedes an in-flight run on the same ref.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI must never call a model. Pinning the provider keeps runs hermetic:
+  # no key, no network, no flake, and identical output on every runner.
+  COLLABX_PROVIDER: deterministic
+
+jobs:
+  test:
+    name: tests (py${{ matrix.python-version }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          # The project is developed on Windows; prove it is not Windows-only.
+          - os: windows-latest
+            python-version: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  package:
+    name: wheel installs and runs outside the repo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+
+      # The test suite passes whether or not packaging is correct, because
+      # pytest imports from the working directory. This repo has already
+      # shipped a broken build that every test passed on, so the wheel is
+      # installed to a clean prefix and exercised from outside the source tree.
+      - name: Install the wheel elsewhere and run the pipeline
+        run: |
+          mkdir -p /tmp/verify/site
+          python -m pip install --target /tmp/verify/site dist/*.whl
+          cd /tmp/verify
+          PYTHONPATH=/tmp/verify/site python -c "
+          import os
+          assert 'collabx' not in os.listdir('.'), 'must not import from the source tree'
+          from collabx.orchestration.collabx_engine import CollabXEngine
+          from collabx.core.models import EditorialBrief
+          pub = CollabXEngine().produce_edition(EditorialBrief())
+          assert pub.final_markdown.strip(), 'no markdown produced'
+          assert 0.0 <= pub.feedback.readability_score <= 100.0
+          print('installed wheel runs from outside the repo:', pub.edition_id)
+          "
+
+  api:
+    name: api boots and answers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Boot the server and hit the real endpoints
+        run: |
+          python -m uvicorn collabx.server:app --host 127.0.0.1 --port 8014 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8014/healthz >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8014/healthz
+          curl -sf http://127.0.0.1:8014/readyz
+          curl -sf http://127.0.0.1:8014/api/v1/providers
+          curl -sf -X POST http://127.0.0.1:8014/api/v1/editorial/produce-newsletter \
+            -H 'Content-Type: application/json' \
+            -d '{"topic":"CI Smoke Test","target_word_count":200}' \
+            | python -c "import json,sys; d=json.load(sys.stdin); assert d['final_markdown'].strip(); print('edition:', d['edition_id'])"

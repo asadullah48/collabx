@@ -23,6 +23,10 @@ from collabx.core.models import (
     ToneStyle,
 )
 from collabx.core.revision import apply_revisions
+from collabx.core.tone import profile_for
+from collabx.providers import resolve_provider
+from collabx.providers.base import ProviderUnavailable
+from collabx.providers.deterministic import is_model_backed
 
 # Headline register per tone. TECH_PIONEER keeps "The Next Frontier:" because
 # that is the published headline convention for the default brief.
@@ -86,17 +90,54 @@ class RevisionHint:
 
     Deliberately a plain object, not a pydantic model: it never crosses the API
     boundary. It is loop-internal instruction, not part of the response schema.
+
+    `critique` carries the Editor's actual notes. On the template path they are
+    unused -- a regex cannot act on prose -- but on the model path they are the
+    whole point: the model is told which gate it failed and by how much, which
+    turns the loop into a real critique-and-revise cycle rather than a retry.
     """
 
-    def __init__(self, max_sentence_words: int, simplify_vocabulary: bool):
+    def __init__(
+        self,
+        max_sentence_words: int,
+        simplify_vocabulary: bool,
+        critique: Optional[List[str]] = None,
+    ):
         self.max_sentence_words = max_sentence_words
         self.simplify_vocabulary = simplify_vocabulary
+        self.critique = critique or []
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
         return (
             f"RevisionHint(max_sentence_words={self.max_sentence_words}, "
-            f"simplify_vocabulary={self.simplify_vocabulary})"
+            f"simplify_vocabulary={self.simplify_vocabulary}, "
+            f"critique={len(self.critique)} notes)"
         )
+
+
+WRITER_PROMPT = """You are writing one section of a newsletter.
+
+Topic: {topic}
+Audience: {audience}
+Voice: {tone_label} -- {guidance}
+
+Use ONLY these research findings. Copy every figure EXACTLY as written:
+{findings}
+
+Write the newsletter body in markdown:
+- Start with a one-line hook. No heading above it.
+- Then one "## " section per finding, quoting that finding's figure verbatim.
+- End with a "## What This Means" section.
+- Average sentence length under {max_words} words.
+- Do NOT invent any statistic, percentage, or quotation that is not listed above.
+- Do NOT write a "# " title. Output markdown only, no commentary.
+{critique_block}
+Newsletter body:"""
+
+CRITIQUE_HEADER = """
+The previous draft was rejected by the editor. Fix these problems:
+{notes}
+"""
 
 
 class WriterAgent:
@@ -104,9 +145,10 @@ class WriterAgent:
     WriterAgent: Drafts high-engagement newsletter editions, catchy hooks, and structured body narratives.
     """
 
-    def __init__(self):
+    def __init__(self, provider=None):
         self.name = "WriterAgent"
-        self.version = "2.0.0"
+        self.version = "3.0.0"
+        self.provider = provider if provider is not None else resolve_provider()
 
     def compose_draft(
         self,
@@ -114,7 +156,26 @@ class WriterAgent:
         dossier: ResearchDossier,
         revision_hint: Optional[RevisionHint] = None,
     ) -> ArticleDraft:
-        """Compose a draft. `revision_hint` re-runs composition under tighter limits."""
+        """Compose a draft. `revision_hint` re-runs composition under tighter limits.
+
+        Tries the model first when one is configured, and falls back to the
+        template on any failure. The fallback is silent by design: a draft
+        produced without a model is a *worse* draft, not a failed request, and
+        the Editor scores whichever one arrives by exactly the same rules.
+        """
+        if is_model_backed(self.provider):
+            drafted = self._compose_with_model(brief, dossier, revision_hint)
+            if drafted is not None:
+                return drafted
+
+        return self._compose_from_template(brief, dossier, revision_hint)
+
+    def _compose_from_template(
+        self,
+        brief: EditorialBrief,
+        dossier: ResearchDossier,
+        revision_hint: Optional[RevisionHint] = None,
+    ) -> ArticleDraft:
         headline = f"{HEADLINE_PREFIX[brief.tone]} {brief.topic}"
         subheadline = SUBHEADLINE[brief.tone]
         hook = HOOK[brief.tone]
@@ -144,6 +205,107 @@ class WriterAgent:
             raw_markdown=full_md,
             word_count=len(full_md.split()),
         )
+
+    # -- model path --------------------------------------------------------
+
+    def _compose_with_model(
+        self,
+        brief: EditorialBrief,
+        dossier: ResearchDossier,
+        revision_hint: Optional[RevisionHint],
+    ) -> Optional[ArticleDraft]:
+        """Draft with the configured model, or return None to fall back."""
+        profile = profile_for(brief.tone)
+
+        findings = "\n".join(
+            f'- {f.headline}: "{f.statistic}" (quotable: "{f.verified_quote}")'
+            for f in dossier.findings
+        )
+        critique_block = ""
+        if revision_hint is not None and revision_hint.critique:
+            notes = "\n".join(f"- {n}" for n in revision_hint.critique)
+            critique_block = CRITIQUE_HEADER.format(notes=notes)
+
+        max_words = (
+            revision_hint.max_sentence_words
+            if revision_hint is not None
+            else profile.target_sentence_words
+        )
+
+        prompt = WRITER_PROMPT.format(
+            topic=brief.topic,
+            audience=brief.target_audience,
+            tone_label=profile.label,
+            guidance=profile.guidance,
+            findings=findings or "- (no findings supplied)",
+            max_words=max_words,
+            critique_block=critique_block,
+        )
+
+        try:
+            body = self.provider.complete(prompt, max_tokens=1600, temperature=0.5)
+        except ProviderUnavailable:
+            return None
+
+        body = self._strip_fences(body)
+        sections = self._sections_from_markdown(body)
+        if not sections:
+            # A response with no headings is not a newsletter. Fall back rather
+            # than publish a wall of text the Editor cannot section.
+            return None
+
+        headline = f"{HEADLINE_PREFIX[brief.tone]} {brief.topic}"
+        subheadline = SUBHEADLINE[brief.tone]
+        hook = body.split("\n", 1)[0].strip() or HOOK[brief.tone]
+
+        full_md = f"# {headline}\n\n*{subheadline}*\n\n{body.strip()}\n"
+
+        return ArticleDraft(
+            draft_id=f"DFT-{stable_suffix(brief.topic, 10000)}",
+            headline=headline,
+            subheadline=subheadline,
+            hook=hook,
+            sections=sections,
+            raw_markdown=full_md,
+            word_count=len(full_md.split()),
+        )
+
+    @staticmethod
+    def _strip_fences(text: str) -> str:
+        """Remove a wrapping markdown code fence if the model added one."""
+        stripped = text.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.split("\n", 1)[-1]
+            stripped = stripped.rsplit("```", 1)[0]
+        return stripped.strip()
+
+    @staticmethod
+    def _sections_from_markdown(body: str) -> List[NewsletterSection]:
+        """Split model output on '## ' headings into typed sections."""
+        sections: List[NewsletterSection] = []
+        heading: Optional[str] = None
+        buffer: List[str] = []
+
+        for line in body.split("\n"):
+            if line.startswith("## "):
+                if heading is not None:
+                    sections.append(
+                        NewsletterSection(
+                            heading=heading, content_markdown="\n".join(buffer).strip()
+                        )
+                    )
+                heading = line[3:].strip()
+                buffer = []
+            elif heading is not None:
+                buffer.append(line)
+
+        if heading is not None:
+            sections.append(
+                NewsletterSection(heading=heading, content_markdown="\n".join(buffer).strip())
+            )
+        return sections
+
+    # -- template path -----------------------------------------------------
 
     @staticmethod
     def _elaboration_depth(target_word_count: int, finding_count: int) -> int:

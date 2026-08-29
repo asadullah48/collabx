@@ -4,17 +4,47 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "collabx"
-version = "1.0.0"
-description = "CollabX: Orchestrated Multi-Agent Newsletter & Report Team Framework"
+version = "2.0.0"
+description = "Multi-agent editorial pipeline with verifiable quality gates: real readability scoring, dossier-grounded fact-checking, and a bounded revision loop."
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "CollabX Media Systems", email = "editorial@collabx.dev" }]
-keywords = ["multi-agent-team", "newsletter-agents", "editorial-workflow", "langgraph-collaboration", "automated-publishing"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Asadullah Shafique" }]
+# No "langgraph" here. The previous keyword list advertised a LangGraph
+# integration this project has never had; the state machine is hand-written.
+keywords = [
+    "multi-agent",
+    "editorial-workflow",
+    "newsletter-generation",
+    "fact-checking",
+    "readability-scoring",
+    "llm-guardrails",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+# Runtime dependencies are the web layer only. Every model provider is reached
+# over plain HTTP with the standard library, so installing CollabX pulls in no
+# vendor SDKs and the package works with no key and no network.
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn>=0.29.0",
     "pydantic>=2.7.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/asadullah48/collabx"
+Repository = "https://github.com/asadullah48/collabx"
+Issues = "https://github.com/asadullah48/collabx/issues"
 
 [project.optional-dependencies]
 dev = [
