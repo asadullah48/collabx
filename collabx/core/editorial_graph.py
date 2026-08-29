@@ -1,3 +1,4 @@
+from html import escape
 from typing import Dict, Any, Tuple
 from collabx.core.models import (
     EditorialBrief, ResearchDossier, ArticleDraft, EditorFeedback, PublishedNewsletter
@@ -54,18 +55,26 @@ class EditorialGraph:
 
     @staticmethod
     def compile_html(markdown_text: str) -> str:
-        # Lightweight markdown to HTML formatter
+        # Lightweight markdown to HTML formatter.
+        # Every slice is escaped before interpolation: the brief topic is
+        # user-controlled and flows through the headline into this output, and
+        # html_body is documented as an email-broadcast payload. quote=False is
+        # deliberate -- these are text nodes, not attributes, so escaping the
+        # article's own apostrophes would corrupt the prose for no security gain.
+        def text(raw: str) -> str:
+            return escape(raw, quote=False)
+
         lines = markdown_text.split('\n')
         html_lines = []
         for line in lines:
             if line.startswith('# '):
-                html_lines.append(f"<h1>{line[2:]}</h1>")
+                html_lines.append(f"<h1>{text(line[2:])}</h1>")
             elif line.startswith('## '):
-                html_lines.append(f"<h2>{line[3:]}</h2>")
+                html_lines.append(f"<h2>{text(line[3:])}</h2>")
             elif line.startswith('### '):
-                html_lines.append(f"<h3>{line[4:]}</h3>")
+                html_lines.append(f"<h3>{text(line[4:])}</h3>")
             elif line.startswith('> '):
-                html_lines.append(f"<blockquote>{line[2:]}</blockquote>")
+                html_lines.append(f"<blockquote>{text(line[2:])}</blockquote>")
             elif line.strip():
-                html_lines.append(f"<p>{line}</p>")
+                html_lines.append(f"<p>{text(line)}</p>")
         return "\n".join(html_lines)

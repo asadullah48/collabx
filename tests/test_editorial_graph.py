@@ -64,6 +64,31 @@ def test_critique_uses_tone_value_not_python_repr():
     assert "ToneStyle." not in joined
 
 
+def test_compile_html_escapes_markup_in_headings():
+    # The brief topic is user-controlled and reaches compile_html via the
+    # headline, so a topic carrying markup must not become live HTML.
+    html = EditorialGraph.compile_html("# The Next Frontier: <img src=x onerror=alert(1)>")
+    assert "<img" not in html
+    assert "&lt;img src=x onerror=alert(1)&gt;" in html
+
+
+def test_compile_html_escapes_markup_in_body_and_quotes():
+    md = "> <script>steal()</script>\nBody with <b>tags</b> & an ampersand."
+    html = EditorialGraph.compile_html(md)
+    assert "<script>" not in html
+    assert "<b>" not in html
+    assert "&lt;script&gt;steal()&lt;/script&gt;" in html
+    assert "&amp; an ampersand" in html
+
+
+def test_compile_html_leaves_prose_punctuation_readable():
+    # quote=False: apostrophes and quotation marks stay literal so the email
+    # body reads as prose rather than entity soup.
+    html = EditorialGraph.compile_html("> *'Agents shift productivity from assist to execute.'*")
+    assert "&#x27;" not in html
+    assert "'Agents shift productivity" in html
+
+
 def test_revision_required_tracks_the_readability_threshold():
     brief = EditorialBrief(topic="Enterprise AI")
     feedback = EditorialGraph.evaluate_draft(_draft_with_word_count(10), brief)

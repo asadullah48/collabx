@@ -49,7 +49,8 @@
 | FastAPI gateway, health probes, static dashboard | ✅ Implemented |
 | Docker / Compose / Helm packaging | ✅ Implemented |
 | Deterministic, reproducible edition IDs | ✅ Implemented |
-| Markdown → HTML compilation | ⚠️ Block-level only — no inline formatting (`**bold**` is not converted), no lists, no HTML escaping |
+| HTML escaping in `html_body` | ✅ Implemented — text nodes are escaped, so a topic carrying markup cannot become live HTML |
+| Markdown → HTML compilation | ⚠️ Block-level only — no inline formatting (`**bold**` is not converted), no lists |
 | LLM-backed research, writing, editing | ❌ Not implemented — agents return fixed sample content |
 | Flesch-Kincaid readability scoring | ❌ Not implemented — `readability_score` is the constant `88.5` |
 | Fact-check grounding against the dossier | ❌ Not implemented — `fact_check_passed` is always `True` |
