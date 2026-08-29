@@ -1,0 +1,23 @@
+# Keep the serverless bundle to the code that actually serves requests.
+# Vercel has a size limit, and everything below is either build tooling,
+# deployment config for other targets, or documentation.
+
+tests/
+helm/
+.github/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+SPEC.md
+DEPLOY.md
+README.ar.md
+
+.env
+.env.example
