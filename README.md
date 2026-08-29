@@ -40,6 +40,7 @@ Every number there is measured from the draft. None of them is a constant.
 <!-- The CI badge is live: it reflects the actual result of the most recent run
      on main, across Python 3.10-3.13 on Linux and Windows. It is not a static
      image asserting a number that nothing checks. -->
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://collabx-gamma.vercel.app)
 [![CI](https://github.com/asadullah48/collabx/actions/workflows/ci.yml/badge.svg)](https://github.com/asadullah48/collabx/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
@@ -223,16 +224,19 @@ editorial desk.
 
 ### Live demo
 
-Deploying takes about 30 seconds and costs nothing —
-[import the repo on Vercel](https://vercel.com/new) and press Deploy.
-`vercel.json` and `api/index.py` are already committed, so there is nothing to
-configure.
+**<https://collabx-gamma.vercel.app>** — no signup, no key, nothing to install.
 
-The hosted build runs the **deterministic engine**: no API key on a public URL,
-no free-tier quota that a crawler can drain, and therefore a link that cannot
-break. Hugging Face Spaces, Render and Fly are covered in
-[DEPLOY.md](DEPLOY.md), which also shows how to publish the URL to this
-repository's GitHub sidebar.
+- [Editorial studio](https://collabx-gamma.vercel.app/) — submit a brief, watch the pipeline run
+- [Swagger docs](https://collabx-gamma.vercel.app/docs) — try the API in the browser
+- [Active provider](https://collabx-gamma.vercel.app/api/v1/providers) — reports `"llm_backed": false`
+
+The hosted build runs the **deterministic engine** on purpose. A public URL
+holding an API key is one crawler away from an exhausted quota, and a demo that
+returns 500 is worse than no demo. This one cannot break and costs nothing to
+keep up. Run it locally with [a free model](#-running-it-with-a-model-free) to
+see the LLM path.
+
+Hugging Face Spaces, Render and Fly are covered in [DEPLOY.md](DEPLOY.md).
 
 ---
 

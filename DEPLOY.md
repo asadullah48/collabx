@@ -10,15 +10,30 @@ the deterministic engine, which behaves identically for every visitor, forever.
 
 ---
 
-## Vercel (free, ~30 seconds)
+## Vercel — currently live at <https://collabx-gamma.vercel.app>
 
-`vercel.json` and `api/index.py` are already committed, so Vercel needs no
+`vercel.json` and `api/index.py` are committed, so Vercel needs no
 configuration. It detects the Python builder, installs `requirements.txt`, and
 serves `collabx.server:app` through `api/index.py`.
 
-1. <https://vercel.com/new> → **Import Git Repository** → `asadullah48/collabx`
-2. Framework preset: **Other**. Leave every build setting untouched.
-3. **Deploy.**
+Redeploy from the CLI:
+
+```bash
+vercel deploy --prod --yes
+```
+
+Or from the dashboard: <https://vercel.com/new> → **Import Git Repository** →
+`asadullah48/collabx` → framework preset **Other** → **Deploy**.
+
+> [!WARNING]
+> Use the **production alias** Vercel assigns. A hand-created alias
+> (`vercel alias set ...`) lands behind Vercel SSO and redirects visitors to a
+> login page — verified during setup, and fatal for a public demo. Always
+> confirm a URL is reachable while signed out:
+>
+> ```bash
+> curl -s -o /dev/null -w '%{http_code}\n' https://<url>/healthz   # want 200, not 302
+> ```
 
 No environment variables are needed. The demo runs the deterministic engine
 because `vercel.json` pins `COLLABX_PROVIDER=deterministic`, so the public URL
