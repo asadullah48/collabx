@@ -262,6 +262,32 @@ carried a "200+ tests" badge over a suite of 10 tautological ones.
 
 ---
 
+## 🤖 Agentic AI Alignment
+
+- **Autonomy** — Researcher → Writer → Editor produce a publication-ready
+  newsletter with no human drafting or fact-checking step required.
+- **Resilience** — the Editor's gates (Flesch readability floor,
+  source-traced statistics, a bounded revision loop) run identically
+  whether the prose came from a model or the built-in template engine —
+  the quality guarantee doesn't depend on the LLM being available or even
+  present, which is why it runs with no API key by default.
+- **Adaptivity** — the revision loop sends failing drafts back with the
+  specific critique that failed them, so the Writer adapts its next draft
+  to concrete feedback rather than blindly regenerating.
+
+### Roadmap
+
+- Expose the Researcher/Writer/Editor trio as MCP tools so other
+  content-ops agent systems can plug into this same verified pipeline.
+- Extend the Kubernetes deployment path (`helm/`) already documented with
+  autoscaling per role as newsletter volume grows.
+
+## 🤖 Author
+
+Built by **Asadullah Shafique**.
+
+🔗 Explore my portfolio showcasing Agentic AI projects and real-world applications: [asadullahshafique-devunity.vercel.app](https://asadullahshafique-devunity.vercel.app)
+
 ## 🌐 Connected Ecosystem & Portfolio
 
 - **DevUnity Portfolio**: [https://asadullahshafique-devunity.vercel.app](https://asadullahshafique-devunity.vercel.app)
